@@ -1,0 +1,43 @@
+{
+  "video": "c:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/dfdc/dfdc_train_part_1/aassnaulhq.mp4",
+  "warmup": 1,
+  "runs": 3,
+  "models": {
+    "mixed": {
+      "frames_decoded": 32.0,
+      "faces_detected": 32.0,
+      "t_decode": 1.5574143333312047,
+      "t_detect_align": 1.4560685333126457,
+      "t_tensor": 0.026396299998547573,
+      "t_model": 0.0723289000064445,
+      "t_e2e": 3.237583433331262
+    },
+    "robust": {
+      "frames_decoded": 32.0,
+      "faces_detected": 32.0,
+      "t_decode": 1.8326184666657355,
+      "t_detect_align": 1.6168015666723174,
+      "t_tensor": 0.02868033333409888,
+      "t_model": 0.0710865000000922,
+      "t_e2e": 3.163014700000834
+    },
+    "ensemble": {
+      "frames_decoded": 32.0,
+      "faces_detected": 32.0,
+      "t_decode": 1.6243534333334537,
+      "t_detect_align": 1.5945879333545843,
+      "t_tensor": 0.02701813333745425,
+      "t_model": 0.1937734666717006,
+      "t_e2e": 3.4223764000004544
+    },
+    "temporal": {
+      "frames_decoded": 32.0,
+      "faces_detected": 32.0,
+      "t_decode": 1.6707307666656561,
+      "t_detect_align": 1.6502154666474478,
+      "t_tensor": 0.027353400000720285,
+      "t_model": 0.20844236666259044,
+      "t_e2e": 3.4470963999968567
+    }
+  }
+}
