@@ -1,0 +1,404 @@
+/* Swagger UI dark theme - matches the main app palette in style.css.
+   Applied by src/api/main.py via get_swagger_ui_html(swagger_css_url=...).
+
+   The @import pulls in the stock Swagger UI stylesheet first, then our
+   overrides below replace the light-theme colours. @import must be the
+   very first rule in a CSS file. */
+@import url("https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css");
+
+:root {
+    color-scheme: dark;
+    --s-bg: #0b0f14;
+    --s-surface: #161d27;
+    --s-surface-2: #11171f;
+    --s-border: #222c3a;
+    --s-border-strong: #31405a;
+    --s-text: #eaeef5;
+    --s-text-soft: #c4ccd8;
+    --s-muted: #7d8796;
+    --s-accent: #5b8cff;
+    --s-success: #39d98a;
+    --s-danger: #ff6161;
+    --s-warning: #ffb347;
+}
+
+html, body, .swagger-ui {
+    background: var(--s-bg) !important;
+    color: var(--s-text) !important;
+}
+
+html {
+    color-scheme: dark;
+}
+
+body {
+    min-height: 100vh;
+}
+
+/* Top bar */
+.swagger-ui .topbar { display: none; }
+
+/* Headings and text */
+.swagger-ui,
+.swagger-ui .info .title,
+.swagger-ui .info .title small,
+.swagger-ui .info li,
+.swagger-ui .info p,
+.swagger-ui .info table,
+.swagger-ui .opblock-tag,
+.swagger-ui .opblock .opblock-summary-description,
+.swagger-ui .opblock .opblock-summary-path,
+.swagger-ui .opblock .opblock-summary-path__deprecated,
+.swagger-ui .opblock-description-wrapper p,
+.swagger-ui .opblock-external-docs-wrapper p,
+.swagger-ui .opblock-title_normal p,
+.swagger-ui .tab li,
+.swagger-ui .parameters-col_description,
+.swagger-ui .parameter__name,
+.swagger-ui .parameter__type,
+.swagger-ui .parameter__in,
+.swagger-ui table thead tr td,
+.swagger-ui table thead tr th,
+.swagger-ui .response-col_status,
+.swagger-ui .response-col_links,
+.swagger-ui .responses-inner h4,
+.swagger-ui .responses-inner h5,
+.swagger-ui label,
+.swagger-ui .model-title,
+.swagger-ui .model,
+.swagger-ui section.models h4,
+.swagger-ui section.models h4 span,
+.swagger-ui .model-box,
+.swagger-ui .model .property,
+.swagger-ui .prop-type,
+.swagger-ui .prop-format,
+.swagger-ui .dialog-ux .modal-ux-header h3,
+.swagger-ui .dialog-ux .modal-ux-content p {
+    color: var(--s-text) !important;
+}
+
+.swagger-ui .info .title small .version-stamp,
+.swagger-ui .scheme-container {
+    background: var(--s-surface) !important;
+    box-shadow: none !important;
+}
+
+/* Operation blocks */
+.swagger-ui .opblock {
+    background: var(--s-surface) !important;
+    border-color: var(--s-border) !important;
+    box-shadow: none !important;
+    margin: 0 0 12px !important;
+    border-radius: 10px !important;
+}
+.swagger-ui .opblock .opblock-summary { border-color: var(--s-border) !important; }
+.swagger-ui .opblock-tag {
+    border-bottom-color: var(--s-border) !important;
+    color: var(--s-text) !important;
+}
+.swagger-ui .opblock-tag:hover { background: rgba(91, 140, 255, 0.05) !important; }
+
+.swagger-ui .opblock .opblock-section-header {
+    background: var(--s-surface-2) !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+.swagger-ui .opblock .opblock-section-header h4,
+.swagger-ui .opblock .opblock-section-header label {
+    color: var(--s-text) !important;
+}
+
+/* Method badges keep their native colours but get a muted background */
+.swagger-ui .opblock.opblock-get { border-color: rgba(91, 140, 255, 0.35) !important; background: rgba(91, 140, 255, 0.05) !important; }
+.swagger-ui .opblock.opblock-post { border-color: rgba(57, 217, 138, 0.35) !important; background: rgba(57, 217, 138, 0.05) !important; }
+.swagger-ui .opblock.opblock-put { border-color: rgba(255, 179, 71, 0.35) !important; background: rgba(255, 179, 71, 0.05) !important; }
+.swagger-ui .opblock.opblock-delete { border-color: rgba(255, 97, 97, 0.35) !important; background: rgba(255, 97, 97, 0.05) !important; }
+
+/* Tables */
+.swagger-ui table tbody tr td { background: transparent !important; border-color: var(--s-border) !important; }
+.swagger-ui table thead tr { background: var(--s-surface-2) !important; }
+.swagger-ui table thead tr td, .swagger-ui table thead tr th { border-color: var(--s-border) !important; }
+
+/* Inputs, selects, textareas */
+.swagger-ui input[type="text"],
+.swagger-ui input[type="password"],
+.swagger-ui input[type="email"],
+.swagger-ui input[type="number"],
+.swagger-ui input[type="file"],
+.swagger-ui textarea,
+.swagger-ui select {
+    background: var(--s-surface-2) !important;
+    color: var(--s-text) !important;
+    border: 1px solid var(--s-border) !important;
+    border-radius: 6px !important;
+}
+
+/* Buttons */
+.swagger-ui .btn {
+    background: var(--s-surface) !important;
+    color: var(--s-text) !important;
+    border: 1px solid var(--s-border) !important;
+    box-shadow: none !important;
+}
+.swagger-ui .btn.try-out__btn:hover,
+.swagger-ui .btn:hover { border-color: var(--s-accent) !important; }
+.swagger-ui .btn.execute {
+    background: var(--s-accent) !important;
+    color: white !important;
+    border-color: var(--s-accent) !important;
+}
+
+/* Code blocks */
+.swagger-ui .highlight-code,
+.swagger-ui .highlight-code > .microlight,
+.swagger-ui pre,
+.swagger-ui .markdown code,
+.swagger-ui .renderedMarkdown code {
+    background: var(--s-bg) !important;
+    color: var(--s-text-soft) !important;
+    border-radius: 6px !important;
+}
+.swagger-ui .microlight .hll { background: rgba(91, 140, 255, 0.15) !important; }
+
+/* ---------- Models / Schemas section (the "janky" block) ---------- */
+.swagger-ui section.models {
+    background: var(--s-surface) !important;
+    border-color: var(--s-border) !important;
+    border-radius: 10px !important;
+}
+.swagger-ui section.models.is-open h4 {
+    border-bottom-color: var(--s-border) !important;
+}
+.swagger-ui section.models .model-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.swagger-ui section.models .model-box { background: transparent !important; }
+.swagger-ui .model-toggle:after { filter: invert(0.85); }
+
+/* Property rows inside a schema */
+.swagger-ui .model .property.primitive,
+.swagger-ui .model .property {
+    color: var(--s-text-soft) !important;
+}
+.swagger-ui .prop-format { color: var(--s-muted) !important; }
+
+/* Response status colours */
+.swagger-ui .response-col_status { color: var(--s-text) !important; }
+
+/* Scrollbars (WebKit) */
+.swagger-ui *::-webkit-scrollbar { width: 10px; height: 10px; }
+.swagger-ui *::-webkit-scrollbar-track { background: var(--s-bg); }
+.swagger-ui *::-webkit-scrollbar-thumb {
+    background: var(--s-border);
+    border-radius: 6px;
+}
+.swagger-ui *::-webkit-scrollbar-thumb:hover { background: var(--s-accent); }
+
+/* Authorize button + modal */
+.swagger-ui .auth-wrapper .authorize { background: var(--s-accent) !important; color: white !important; border-color: var(--s-accent) !important; }
+.swagger-ui .dialog-ux .modal-ux { background: var(--s-surface) !important; border-color: var(--s-border) !important; color: var(--s-text) !important; }
+.swagger-ui .dialog-ux .modal-ux-header { background: var(--s-surface-2) !important; border-bottom-color: var(--s-border) !important; }
+
+/* Arrows and expanders */
+.swagger-ui .expand-methods svg,
+.swagger-ui .expand-operation svg,
+.swagger-ui .arrow,
+.swagger-ui section.models h4 svg,
+.swagger-ui section.models button svg,
+.swagger-ui section.models .model-toggle,
+.swagger-ui .json-schema-2020-12 svg,
+.swagger-ui .json-schema-2020-12 button svg,
+.swagger-ui .json-schema-2020-12-accordion-toggle svg {
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+    color: #ffffff !important;
+}
+
+.swagger-ui .expand-methods svg *,
+.swagger-ui .expand-operation svg *,
+.swagger-ui .arrow *,
+.swagger-ui section.models h4 svg *,
+.swagger-ui section.models button svg *,
+.swagger-ui section.models .model-toggle *,
+.swagger-ui .json-schema-2020-12 svg *,
+.swagger-ui .json-schema-2020-12 button svg *,
+.swagger-ui .json-schema-2020-12-accordion-toggle svg * {
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+.swagger-ui section.models button,
+.swagger-ui .json-schema-2020-12 button,
+.swagger-ui .json-schema-2020-12-accordion-toggle {
+    color: #ffffff !important;
+}
+
+/* Info block links */
+.swagger-ui a { color: var(--s-accent) !important; }
+.swagger-ui a:hover { color: #7fa7ff !important; }
+
+/* ---------- JSON-Schema 2020-12 renderer (Swagger UI 5.x) ----------
+   These are the grey "pills" around schema names, property names,
+   and Expand/Collapse buttons in the Schemas section. We replace
+   them with transparent / accent-tinted surfaces that fit the dark
+   theme and add subtle dividers between rows. */
+
+/* Every descendant gets reset so the schema renderer cannot fall back to
+   Swagger UI's light defaults on machines using a light OS theme. */
+.swagger-ui .json-schema-2020-12,
+.swagger-ui .json-schema-2020-12 *,
+.swagger-ui section.models .json-schema-2020-12,
+.swagger-ui section.models .json-schema-2020-12 * {
+    background-color: transparent !important;
+    color: var(--s-text) !important;
+}
+
+/* Root accordion (a whole schema like FramePrediction). Dark card with a
+   real visible border (the default Swagger CSS applies
+   `border: none`; this overrides it at higher specificity). */
+.swagger-ui section.models .json-schema-2020-12-accordion,
+.swagger-ui .json-schema-2020-12-accordion {
+    background: var(--s-surface-2) !important;
+    color: var(--s-text) !important;
+    border: 1px solid var(--s-border) !important;
+    border-radius: 10px !important;
+    padding: 14px 18px !important;
+    margin: 0 0 10px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.swagger-ui section.models .json-schema-2020-12-accordion:hover {
+    border-color: var(--s-border-strong, #31405a) !important;
+}
+.swagger-ui section.models .json-schema-2020-12-accordion[open],
+.swagger-ui section.models .json-schema-2020-12-accordion--open {
+    border-color: #5b8cff !important;
+    box-shadow: 0 4px 14px rgba(91, 140, 255, 0.18) !important;
+}
+
+/* Schema name heading (e.g. "Body_predict_api_predict_post") */
+.swagger-ui .json-schema-2020-12__title,
+.swagger-ui .json-schema-2020-12-head__title,
+.swagger-ui .json-schema-2020-12-keyword__name,
+.swagger-ui .json-schema-2020-12-property__name,
+.swagger-ui .json-schema-2020-12-head {
+    background: transparent !important;
+    color: var(--s-text) !important;
+    font-weight: 600 !important;
+}
+
+/* Property name pills (video, model, frame_index, ...) */
+.swagger-ui .json-schema-2020-12-property > .json-schema-2020-12-head,
+.swagger-ui .json-schema-2020-12-keyword > .json-schema-2020-12-keyword__name {
+    padding: 2px 0 !important;
+    border-radius: 0 !important;
+}
+
+/* Property container rows - left-border divider inside the dark card */
+.swagger-ui .json-schema-2020-12-property {
+    background: transparent !important;
+    border-left: 2px solid var(--s-border) !important;
+    padding-left: 14px !important;
+    margin: 4px 0 !important;
+    transition: border-color 0.12s;
+}
+.swagger-ui .json-schema-2020-12-property:hover {
+    border-left-color: #5b8cff !important;
+}
+
+/* The click-to-expand area */
+.swagger-ui .json-schema-2020-12-accordion-toggle {
+    background: transparent !important;
+    color: var(--s-text) !important;
+    border: none !important;
+    padding: 0 !important;
+    font-weight: 600 !important;
+}
+.swagger-ui .json-schema-2020-12-accordion-toggle:hover { color: #7fa7ff !important; }
+
+/* "Expand all" / "Collapse all" buttons - hidden (visual noise, the
+   accordion header itself is clickable). */
+.swagger-ui .json-schema-2020-12-expand-deep-button,
+.swagger-ui .json-schema-2020-12-expand-button,
+.swagger-ui .json-schema-2020-12__expand-deep-button,
+.swagger-ui button[data-testid*="expand"] {
+    display: none !important;
+}
+
+/* Type labels (string / integer / object / array<object>) */
+.swagger-ui .json-schema-2020-12__type,
+.swagger-ui .json-schema-2020-12-keyword__value,
+.swagger-ui .json-schema-2020-12-core-keyword__value,
+.swagger-ui .json-schema-2020-12-keyword--type .json-schema-2020-12-keyword__value {
+    background: rgba(91, 140, 255, 0.12) !important;
+    color: #9bb9ff !important;
+    border-radius: 4px !important;
+    padding: 1px 8px !important;
+    font-size: 0.82rem !important;
+    font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace !important;
+    margin-left: 6px !important;
+}
+
+/* Constraint / format pills (e.g. "[0, 1]", "int64") - purple accent */
+.swagger-ui .json-schema-2020-12-keyword--minimum .json-schema-2020-12-keyword__value,
+.swagger-ui .json-schema-2020-12-keyword--maximum .json-schema-2020-12-keyword__value,
+.swagger-ui .json-schema-2020-12-keyword--format .json-schema-2020-12-keyword__value,
+.swagger-ui .json-schema-2020-12-keyword--enum .json-schema-2020-12-keyword__value,
+.swagger-ui .json-schema-2020-12-range,
+.swagger-ui .json-schema-2020-12-core-keyword--format,
+.swagger-ui .json-schema-2020-12-core-keyword--enum {
+    background: rgba(128, 65, 214, 0.14) !important;
+    color: #c7a5ff !important;
+    border-radius: 4px !important;
+    padding: 1px 8px !important;
+    font-size: 0.78rem !important;
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace !important;
+}
+
+/* media type (application/octet-stream) - warm amber */
+.swagger-ui .json-schema-2020-12-keyword--contentMediaType .json-schema-2020-12-keyword__value,
+.swagger-ui .json-schema-2020-12-keyword--media-type .json-schema-2020-12-keyword__value {
+    background: rgba(214, 128, 0, 0.14) !important;
+    color: #ffc778 !important;
+    border-radius: 4px !important;
+    padding: 1px 8px !important;
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace !important;
+    font-size: 0.78rem !important;
+}
+
+/* Required red asterisk */
+.swagger-ui .json-schema-2020-12-property--required > .json-schema-2020-12-head::after,
+.swagger-ui .json-schema-2020-12__required,
+.swagger-ui .json-schema-2020-12-keyword--required {
+    color: #d43b3b !important;
+}
+
+/* Description / rendered markdown inside schemas */
+.swagger-ui .json-schema-2020-12 .renderedMarkdown,
+.swagger-ui .json-schema-2020-12 .renderedMarkdown p,
+.swagger-ui .json-schema-2020-12__description {
+    color: var(--s-text-soft) !important;
+    font-size: 0.88rem !important;
+    margin-top: 4px !important;
+}
+
+/* Legacy model renderer fallbacks (used by some endpoints) */
+.swagger-ui section.models .model,
+.swagger-ui section.models .model-box,
+.swagger-ui section.models .model-container,
+.swagger-ui section.models .model .property {
+    background: var(--s-surface-2) !important;
+    color: var(--s-text) !important;
+}
+.swagger-ui section.models .prop-name,
+.swagger-ui section.models .prop-type {
+    background: transparent !important;
+    color: var(--s-text) !important;
+    font-weight: 500 !important;
+}
+.swagger-ui section.models .prop-type { color: #9bb9ff !important; }

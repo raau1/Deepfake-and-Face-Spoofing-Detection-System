@@ -1,0 +1,56 @@
+# Compose file for the Deepfake Detection FastAPI service.
+#
+# Usage:
+#   docker compose build
+#   docker compose up
+#
+# Requirements on the host:
+#   - Docker Desktop with WSL2 backend (Windows) or native Docker (Linux)
+#   - NVIDIA driver + nvidia-container-toolkit (Linux) or WSL2 GPU support
+#     (Windows) so the container sees the RTX 4070
+#
+# The image is built from ./Dockerfile. Heavy artefacts stay outside the
+# image and are mounted at runtime:
+#   - outputs/models     read-only, hosts the four checkpoints
+#   - outputs/uploads    read-write, target for upload-endpoint temp files
+#   - config/config.docker.yaml overrides config/config.yaml inside the
+#     container so paths and host binding match the container filesystem
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: deepfake-detection-api:latest
+    container_name: deepfake-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Trained checkpoints - read-only so the container cannot mutate them.
+      - ./outputs/models:/app/outputs/models:ro
+      # Upload scratch directory - read-write, lives on the host so it
+      # survives container restarts and stays out of the image layer.
+      - ./outputs/uploads:/app/outputs/uploads
+      # Config override - mounted over the in-image config.yaml so the API
+      # picks up container paths and host=0.0.0.0 without any code change.
+      - ./config/config.docker.yaml:/app/config/config.yaml:ro
+    environment:
+      # Forwarded straight to PyTorch / CUDA. NVIDIA_VISIBLE_DEVICES=all
+      # gives the container every visible GPU; pin to a specific index
+      # ("0") on multi-GPU hosts.
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

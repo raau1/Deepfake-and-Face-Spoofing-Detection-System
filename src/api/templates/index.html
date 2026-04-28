@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="container">
+        <header>
+            <span class="badge">University of Leicester &middot; CO3201 FYP</span>
+            <h1>Deepfake Detection</h1>
+            <p class="subtitle">
+                Upload a video to check whether it contains a deepfake.
+                Powered by XceptionNet, an EfficientNet-B4 ensemble, and a temporal LSTM
+                trained on FaceForensics++ and Celeb-DF v2.
+            </p>
+        </header>
+
+        <section class="card">
+            <form id="upload-form">
+                <label class="field-label" for="video">Video file</label>
+
+                <label class="file-drop" id="file-drop" for="video">
+                    <input type="file" id="video" name="video"
+                           accept="{{ allowed_extensions | join(',') }}" required>
+                    <span class="file-drop-icon" aria-hidden="true">&uarr;</span>
+                    <span class="file-drop-title" id="file-drop-title">
+                        Click to choose a video or drag it here
+                    </span>
+                    <span class="file-drop-hint" id="file-drop-hint">
+                        Accepted: {{ allowed_extensions | join(', ') }} &middot; up to {{ max_mb }} MB
+                    </span>
+                    <span class="file-drop-name" id="file-drop-name"></span>
+                </label>
+
+                <label class="field-label" for="model">Model</label>
+                <select id="model" name="model">
+                    {% for name in loaded_models %}
+                        <option value="{{ name }}"
+                                {% if name == default_model %}selected{% endif %}>
+                            {{ name }}{% if name == default_model %} (default){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+                <p class="hint">
+                    temporal = LSTM on frozen XceptionNet &middot; ensemble = XceptionNet + EfficientNet-B4 &middot; mixed = single XceptionNet
+                </p>
+
+                <label class="toggle-row" for="include-gradcam">
+                    <input type="checkbox" id="include-gradcam" name="include_gradcam" value="true" checked>
+                    <span class="toggle-text">
+                        <span class="toggle-title">Explain with Grad-CAM</span>
+                        <span class="toggle-hint">
+                            Produce per-frame heatmap overlays showing which facial regions
+                            the model attended to. Adds 1&ndash;3 seconds on a consumer GPU.
+                        </span>
+                    </span>
+                </label>
+
+                <label class="toggle-row" for="use-tta">
+                    <input type="checkbox" id="use-tta" name="use_tta" value="true">
+                    <span class="toggle-text">
+                        <span class="toggle-title">Test-time augmentation (horizontal flip)</span>
+                        <span class="toggle-hint">
+                            Average softmax outputs over the original sequence and its mirror
+                            image. Stabilises borderline verdicts at roughly 2&times; inference cost.
+                        </span>
+                    </span>
+                </label>
+
+                <button type="submit" id="submit-btn">Analyse video</button>
+            </form>
+        </section>
+
+        <section id="status" class="card status-card hidden">
+            <div class="spinner"></div>
+            <p id="status-text">Processing...</p>
+        </section>
+
+        <section id="result" class="card hidden">
+            <div class="verdict-row" id="verdict-row">
+                <span class="verdict-dot"></span>
+                <h2 id="verdict"></h2>
+                <span class="verdict-tag" id="verdict-tag"></span>
+            </div>
+
+            <div id="tta-diagnostic" class="tta-diagnostic hidden">
+                <div class="tta-diagnostic-header">
+                    <span class="tta-diagnostic-title">Test-time augmentation</span>
+                    <span class="tta-diagnostic-hint">
+                        Softmax averaged over the original clip and its horizontal mirror.
+                    </span>
+                </div>
+                <div class="tta-diagnostic-row">
+                    <div class="tta-cell">
+                        <span class="tta-cell-label">Before (original only)</span>
+                        <span class="tta-cell-value" id="tta-before"></span>
+                    </div>
+                    <span class="tta-arrow" aria-hidden="true">&rarr;</span>
+                    <div class="tta-cell">
+                        <span class="tta-cell-label">After (flip-averaged)</span>
+                        <span class="tta-cell-value" id="tta-after"></span>
+                    </div>
+                    <div class="tta-cell tta-cell-delta">
+                        <span class="tta-cell-label">&Delta;</span>
+                        <span class="tta-cell-value" id="tta-delta"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-label">Fake probability</span>
+                    <span class="metric-value" id="fake-prob"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Confidence</span>
+                    <span class="metric-value" id="confidence"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Model</span>
+                    <span class="metric-value" id="model-used"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Frames analysed</span>
+                    <span class="metric-value" id="frames"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Faces detected</span>
+                    <span class="metric-value" id="faces"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing time</span>
+                    <span class="metric-value" id="time"></span>
+                </div>
+            </div>
+
+            <h3>Per-frame probabilities</h3>
+            <div id="timeline" class="timeline"></div>
+            <div class="timeline-legend">
+                <span class="timeline-legend-item">
+                    <span class="timeline-legend-swatch" style="background:#39d98a"></span> Likely real
+                </span>
+                <span class="timeline-legend-item">
+                    Hover a bar for frame index &amp; probability
+                </span>
+                <span class="timeline-legend-item">
+                    <span class="timeline-legend-swatch" style="background:#ff6161"></span> Likely fake
+                </span>
+            </div>
+
+            <div id="gradcam-section" class="gradcam-section hidden">
+                <h3>Grad-CAM explanation</h3>
+                <p class="gradcam-caption">
+                    Warmer colours show where the model looked to reach its verdict.
+                    Each tile is annotated with the frame index, the explained class,
+                    and that frame&rsquo;s fake probability.
+                </p>
+                <div id="gradcam-gallery" class="gradcam-gallery"></div>
+            </div>
+        </section>
+
+        <section id="error" class="card error-card hidden">
+            <h2>Error</h2>
+            <p id="error-text"></p>
+        </section>
+
+        <footer>
+            <p>
+                CO3201 Final Year Project &middot; University of Leicester &middot;
+                API docs at <a href="/docs">/docs</a>
+            </p>
+        </footer>
+    </main>
+
+    <script>
+        const form = document.getElementById("upload-form");
+        const statusCard = document.getElementById("status");
+        const statusText = document.getElementById("status-text");
+        const resultCard = document.getElementById("result");
+        const errorCard = document.getElementById("error");
+        const errorText = document.getElementById("error-text");
+        const submitBtn = document.getElementById("submit-btn");
+        const fileInput = document.getElementById("video");
+        const fileDrop = document.getElementById("file-drop");
+        const fileDropTitle = document.getElementById("file-drop-title");
+        const fileDropHint = document.getElementById("file-drop-hint");
+        const fileDropName = document.getElementById("file-drop-name");
+
+        function hide(el) { el.classList.add("hidden"); }
+        function show(el) { el.classList.remove("hidden"); }
+
+        function showError(msg) {
+            hide(resultCard);
+            hide(statusCard);
+            errorText.textContent = msg;
+            show(errorCard);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+            return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+        }
+
+        function updateFileName() {
+            const file = fileInput.files && fileInput.files[0];
+            if (file) {
+                fileDrop.classList.add("has-file");
+                fileDropTitle.textContent = "File ready to analyse";
+                fileDropName.textContent = file.name + " (" + formatBytes(file.size) + ")";
+                fileDropHint.textContent = "Click to choose a different video";
+            } else {
+                fileDrop.classList.remove("has-file");
+                fileDropTitle.textContent = "Click to choose a video or drag it here";
+                fileDropName.textContent = "";
+            }
+        }
+
+        fileInput.addEventListener("change", updateFileName);
+
+        // Drag-and-drop support - visually highlight, then hand files to the <input>.
+        ["dragenter", "dragover"].forEach(evt => {
+            fileDrop.addEventListener(evt, e => {
+                e.preventDefault();
+                fileDrop.classList.add("drag-over");
+            });
+        });
+        ["dragleave", "drop"].forEach(evt => {
+            fileDrop.addEventListener(evt, e => {
+                e.preventDefault();
+                fileDrop.classList.remove("drag-over");
+            });
+        });
+        fileDrop.addEventListener("drop", e => {
+            if (e.dataTransfer.files && e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                updateFileName();
+            }
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            hide(resultCard);
+            hide(errorCard);
+            show(statusCard);
+            const wantsGradcam = document.getElementById("include-gradcam").checked;
+            const wantsTta = document.getElementById("use-tta").checked;
+            const extras = [];
+            if (wantsTta) extras.push("running flip-TTA");
+            if (wantsGradcam) extras.push("computing Grad-CAM overlays");
+            statusText.textContent = extras.length
+                ? "Uploading, analysing, " + extras.join(", ") + "..."
+                : "Uploading and analysing...";
+            submitBtn.disabled = true;
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch("/api/predict", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    showError(err.detail || `Request failed (${response.status})`);
+                    return;
+                }
+
+                const data = await response.json();
+                renderResult(data);
+            } catch (err) {
+                showError(err.message || "Network error");
+            } finally {
+                hide(statusCard);
+                submitBtn.disabled = false;
+            }
+        });
+
+        function renderResult(data) {
+            const verdictRow = document.getElementById("verdict-row");
+            const verdictEl = document.getElementById("verdict");
+            const verdictTag = document.getElementById("verdict-tag");
+
+            verdictEl.textContent = data.verdict;
+            let verdictClass;
+            if (data.verdict === "FAKE") {
+                verdictClass = "verdict-fake";
+            } else if (data.verdict === "INCONCLUSIVE") {
+                verdictClass = "verdict-inconclusive";
+            } else {
+                verdictClass = "verdict-real";
+            }
+            verdictRow.className = "verdict-row " + verdictClass;
+
+            // Describe the decision rule: for a 3-way split we show the
+            // inconclusive band, otherwise fall back to the single threshold.
+            const band = data.inconclusive_band;
+            const hasBand = Array.isArray(band) && band.length === 2 && band[0] < band[1];
+            let tag = hasBand
+                ? "band " + band[0].toFixed(2) + "–" + band[1].toFixed(2)
+                : "threshold " + data.threshold.toFixed(2);
+            if (data.tta_applied) tag += " · TTA";
+            verdictTag.textContent = tag;
+
+            const ttaDiagnostic = document.getElementById("tta-diagnostic");
+            if (data.tta_applied && typeof data.fake_probability_no_tta === "number") {
+                const before = data.fake_probability_no_tta;
+                const after = data.fake_probability;
+                const delta = after - before;
+                document.getElementById("tta-before").textContent =
+                    (before * 100).toFixed(2) + "%";
+                document.getElementById("tta-after").textContent =
+                    (after * 100).toFixed(2) + "%";
+                // Signed, percentage-point delta. Colour by direction: green if
+                // the flip-average pushed fake prob down, red if it pushed up,
+                // neutral if the shift is smaller than the ±0.5 pp noise floor.
+                const deltaPp = delta * 100;
+                const deltaEl = document.getElementById("tta-delta");
+                const sign = deltaPp > 0 ? "+" : (deltaPp < 0 ? "\u2212" : "\u00b1");
+                deltaEl.textContent = sign + Math.abs(deltaPp).toFixed(2) + " pp";
+                deltaEl.classList.remove("tta-delta-up", "tta-delta-down", "tta-delta-flat");
+                if (Math.abs(deltaPp) < 0.5) {
+                    deltaEl.classList.add("tta-delta-flat");
+                } else if (deltaPp > 0) {
+                    deltaEl.classList.add("tta-delta-up");
+                } else {
+                    deltaEl.classList.add("tta-delta-down");
+                }
+                show(ttaDiagnostic);
+            } else {
+                hide(ttaDiagnostic);
+            }
+
+            document.getElementById("fake-prob").textContent =
+                (data.fake_probability * 100).toFixed(2) + "%";
+            document.getElementById("confidence").textContent =
+                (data.confidence * 100).toFixed(2) + "%";
+            document.getElementById("model-used").textContent = data.model;
+            document.getElementById("frames").textContent = data.frames_analysed;
+            document.getElementById("faces").textContent = data.faces_detected;
+            document.getElementById("time").textContent =
+                data.processing_time_seconds.toFixed(2) + " s";
+
+            const timeline = document.getElementById("timeline");
+            timeline.innerHTML = "";
+            for (const f of data.per_frame) {
+                const bar = document.createElement("div");
+                bar.className = "timeline-bar";
+                const h = Math.max(f.fake_probability * 100, 4);
+                bar.style.height = h + "%";
+                // Interpolate between success green and danger red based on fake prob.
+                const p = f.fake_probability;
+                const r = Math.round(57 + (255 - 57) * p);
+                const g = Math.round(217 + (97 - 217) * p);
+                const b = Math.round(138 + (97 - 138) * p);
+                bar.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+                bar.title = `Frame ${f.frame_index}: ${(f.fake_probability * 100).toFixed(1)}% fake`;
+                timeline.appendChild(bar);
+            }
+
+            renderGradcam(data.gradcam_frames || []);
+
+            show(resultCard);
+            resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function renderGradcam(frames) {
+            const section = document.getElementById("gradcam-section");
+            const gallery = document.getElementById("gradcam-gallery");
+            gallery.innerHTML = "";
+            if (!frames || frames.length === 0) {
+                hide(section);
+                return;
+            }
+            for (const f of frames) {
+                const tile = document.createElement("figure");
+                tile.className = "gradcam-tile";
+
+                const img = document.createElement("img");
+                img.src = "data:image/png;base64," + f.overlay_png_base64;
+                img.alt = `Grad-CAM overlay for frame ${f.frame_index}`;
+                tile.appendChild(img);
+
+                const caption = document.createElement("figcaption");
+                const verdictWord = f.target_class === 1 ? "fake" : "real";
+                const pctFake = (f.fake_probability * 100).toFixed(1);
+                caption.innerHTML =
+                    `<span class="gradcam-frame-idx">frame ${f.frame_index}</span>` +
+                    `<span class="gradcam-class gradcam-class-${verdictWord}">${verdictWord}</span>` +
+                    `<span class="gradcam-prob">${pctFake}% fake</span>`;
+                tile.appendChild(caption);
+
+                gallery.appendChild(tile);
+            }
+            show(section);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+# Deepfake Detection System - Requirements
+#
+# Install with:
+#     pip install -r requirements.txt
+#
+# The --extra-index-url line below tells pip to also look at PyTorch's wheel index,
+# which is where the CUDA-enabled torch wheels live. The +cu121 suffix pins the
+# CUDA 12.1 build (CUDA 12.1 wheels run fine on the RTX 4070 / driver 596.21 / CUDA 13.2).
+# Without these, plain `pip install torch` on Windows pulls the CPU-only wheel from PyPI
+# and GPU training silently falls back to CPU.
+
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# Core ML Libraries
+torch==2.3.1+cu121       # Core deep learning framework, model training, GPU tensors, autograd (backpropagation)
+torchvision==0.18.1+cu121  # Paired with torch (must match version), image transforms (resize, normalize) used in DataLoader
+
+# Computer Vision
+opencv-python>=4.8.0,<4.11  # Video frame extraction and image decoding. Capped at <4.11 because opencv-python 4.11+ requires numpy>=2, which is incompatible with torch 2.3.1 (needs numpy<2).
+mediapipe>=0.10.0,<0.10.15  # FaceMesh: 468 3D facial landmarks used to rotate faces upright. Capped at <0.10.15 because later 0.10.x releases drop the `mediapipe.python.solutions` API the aligner uses; newer versions also transitively require numpy>=2 (conflicts with the torch 2.3.1 pin).
+facenet-pytorch>=2.5.0  # Provides the MTCNN face detector, finds the bounding box of the face in each frame
+timm>=0.9.0           # PyTorch Image Models, provides XceptionNet architecture with ImageNet pretrained weights
+
+# Data Processing
+numpy>=1.24.0,<2      # Converting images to arrays, computing metrics. Capped at <2 because torch 2.3.1 was compiled against NumPy 1.x; NumPy 2.x triggers "Numpy is not available" errors in DataLoader workers.
+Pillow>=10.0.0        # Image loading and saving, reads .jpg face images from disk into tensors
+scikit-learn>=1.3.0   # Computing evaluation metrics
+
+# Visualization
+matplotlib>=3.7.0     # Plots ROC curves and training history (loss/AUC per epoch) graphs
+seaborn>=0.12.0       # Confusion matrix heatmap visualisation in evaluation output
+grad-cam>=1.5.0       # PyPI package name (import as pytorch_grad_cam) - heatmap overlays for the Grad-CAM shortcut diagnostics in section 6.10 and the FastAPI explainability path
+
+# Utilities
+tqdm>=4.65.0          # Progress bars during preprocessing (per-video) and training (per-batch)
+pyyaml>=6.0           # Parses config into a Python dict, used by every script
+
+# Web Deployment (FastAPI inference server)
+fastapi>=0.110.0      # ASGI web framework, serves the /predict endpoint used by the web UI
+uvicorn[standard]>=0.27.0  # ASGI server that actually runs the FastAPI app; [standard] pulls websockets/httptools for better performance
+python-multipart>=0.0.9   # Required by FastAPI to parse multipart/form-data (video file uploads)
+jinja2>=3.1.0         # Renders the index.html upload template served at GET /
+aiofiles>=23.2.0      # Async file I/O for saving uploaded videos without blocking the event loop
+
+
+# After install, verify GPU access with:
+#     python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+# Expected output: True NVIDIA GeForce RTX 4070
