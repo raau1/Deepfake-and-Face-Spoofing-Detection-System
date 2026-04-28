@@ -1,0 +1,198 @@
+# Deepfake Detection System Configuration
+
+# Dataset Paths
+data:
+  root: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data"
+  
+  faceforensics:
+    root: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/FaceForensics++"
+    original: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/FaceForensics++/original"
+    deepfakes: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/FaceForensics++/Deepfakes"
+    face2face: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/FaceForensics++/Face2Face"
+    faceswap: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/FaceForensics++/FaceSwap"
+    faceshifter: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/FaceForensics++/FaceShifter"
+    neural_textures: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/FaceForensics++/NeuralTextures"
+    deepfake_detection: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/FaceForensics++/DeepFakeDetection"
+
+  celebdf:
+    root: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/Celeb-DF-v2"
+    celeb_real: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/Celeb-DF-v2/Celeb-real"
+    celeb_synthesis: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/Celeb-DF-v2/Celeb-synthesis"
+    youtube_real: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/Celeb-DF-v2/YouTube-real"
+    test_list: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/Celeb-DF-v2/List_of_testing_videos.txt"
+
+  # Extracted faces output directories
+  processed:
+    root: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/processed"
+    faceforensics: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/processed/FaceForensics++_AllTypes"
+    celebdf: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/data/processed/Celeb-DF-v2"
+
+# Preprocessing Settings (OpenCV + MediaPipe pipeline)
+preprocessing:
+  # Face detection settings
+  face_detector: "mtcnn"  # Only MTCNN is implemented; switching to MediaPipe face detection is a future enhancement
+  min_face_size: 60
+
+  # Frame extraction
+  frames_per_video: 32        # Frames extracted and saved to disk per video (preprocessing)
+  training_frames_per_video: 5  # Frames sampled per video per epoch during training
+  frame_sampling: "uniform"  # Options: uniform
+  
+  # Face alignment using MediaPipe landmarks
+  alignment:
+    enabled: true # Runs MediaPipe FaceMesh after MTCNN to rotate faces upright
+    output_size: 299  # XceptionNet input size (must match XceptionNet's input size)
+    margin: 0.3  # Margin around face (30%), padding around the detected face boundary
+  
+  # Image preprocessing
+  image:
+    size: 299  # XceptionNet default input size
+    normalize_mean: [0.5, 0.5, 0.5]
+    normalize_std: [0.5, 0.5, 0.5] # Neural networks converge faster and more stably when inputs are centered around 0 with unit variance
+
+
+# Model Settings (XceptionNet)
+model:
+  # Primary model - XceptionNet
+  xception:
+    pretrained: true # This starts with ImageNet pretained weights (transfer learning)
+    num_classes: 2 # Two output classes real and fake (0,1)
+    dropout: 0.5 # 50% dropout rate to prevent overfitting, randomly disables 50% of neurons during training, prevents model from memorizing training data and makes more robust
+
+  # Secondary model - EfficientNet-B4
+  efficientnet:
+    pretrained: true
+    num_classes: 2
+    dropout: 0.5
+
+  # Ensemble settings — combines XceptionNet and EfficientNet-B4
+  ensemble:
+    fusion: "mean"  # Options: mean (average logits), max (most sensitive), weighted (learned)
+    xception_weight: 0.5  # Initial weight for weighted fusion (EfficientNet gets 1 - this)
+
+  # Temporal model settings — LSTM on top of frozen XceptionNet backbone
+  temporal:
+    lstm_hidden: 512       # LSTM hidden state dimension
+    lstm_layers: 2         # Number of stacked LSTM layers
+    lstm_dropout: 0.3      # Dropout between LSTM layers
+    classifier_dropout: 0.5  # Dropout before final classifier
+    bidirectional: false   # Whether LSTM reads sequence in both directions
+    sequence_length: 32    # Number of frames per video sequence (matches preprocessing)
+
+
+
+
+
+
+
+# Training Settings (Performance targets)
+training:
+  # Basic settings
+  batch_size: 32 # Processes 32 images at a time during training
+  num_workers: 4 # Uses 4 CPU threads for loading data in parallel, 4 threads prepare the next batch while the GPU processes the current one
+  epochs: 30 # Trains for 30 complete passes through the dataset
+  
+  # Optimizer. Controls how weights are updated each batch
+  optimizer:
+    name: "adam" # Adaptive Moment Estimation, automatically adjusts learning rates per parameter
+    learning_rate: 0.0001 # Steps to take when updating the weights, makes small updates to not destroy what the model already learned
+    weight_decay: 0.00001 # L2 regularization, penalizes large weights to prevent overfitting. (L2 regularization is a technique that adds a penalty to the loss function proportional to the square of each weight's value)
+    # L1 regularization uses the sum of absolute values instead, and tends to zero out weights entirely which is why im not using it
+
+  # Learning rate scheduler, controls how the learning rate changes over epochs, just tells the optimizer what learning rate to use next
+  scheduler:
+    name: "cosine"  # Gradually reduces LR following a cosine curve: high at start (big steps), low at end (fine-tuning)
+    min_lr: 0.000001  # Floor value — LR will not drop below this
+  
+  # Data split
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  
+  # Early stopping
+  early_stopping:
+    patience: 7 # If validation performance doesn't improve for 7 epochs it stops
+    min_delta: 0.001 # Sets the minimum improvement required to count as meaningful progress and reset the patience counter. If I don't use this then even tiny improvements would reset the counter rendering the early stop useless
+  
+  # Checkpointing
+  checkpoint_dir: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/models"
+  save_best_only: true
+
+
+# Robust Fine-tune Settings
+# Used by scripts/train_xception_robust.py to fine-tune best_model_mixed.pth
+# with compression-aware augmentation (JPEG re-encoding, downscale/upscale,
+# Gaussian noise, stronger colour jitter). Targets the in-the-wild
+# generalisation gap observed against YouTube deepfake samples during the
+# FastAPI demonstration phase.
+training_robust:
+  epochs: 10
+  learning_rate: 1.0e-5   # Low LR — we are refining the mixed checkpoint, not retraining from scratch
+  resume_from: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/models/mixed/best_model_mixed.pth"
+  output_dir: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/models/robust"
+
+
+# Evaluation targets
+evaluation:
+  # Target metrics from interim report. Used only for my PASS/FAIL display in terminal output, does not affect metrics or saved results
+  targets:
+    faceforensics_auc: 0.92  # 92-95% AUC target
+    celebdf_auc: 0.70  # 70-75% AUC target (cross-dataset)
+    eer_ff: 0.08  # 5-8% EER on FF++
+    eer_celebdf: 0.18  # 12-18% EER on Celeb-DF
+
+  # Used for the DataLoader batch size
+  # Larger than training (32) because no gradients are computed during evaluation, so more images fit in GPU memory
+  batch_size: 64
+
+  # Controls how per-frame predictions are combined into a single video-level verdict:
+  #   mean , average raw fake probabilities across all frames, threshold at 0.5 (default, balanced)
+  #   majority , count binary votes per frame, fake if >50% frames predict fake
+  #   max  , fake if ANY single frame's fake probability exceeds 0.5 (most sensitive, most false alarms)
+  aggregation: "mean"
+
+
+# Inference Settings
+# Used by both the programmatic inference path and the FastAPI web deployment
+inference:
+  target_fps: 10       # Target: 10+ FPS on consumer GPU (reference target from interim report)
+  batch_size: 8
+  default_threshold: 0.5  # Fake probability above this → verdict = "FAKE"
+  # Inconclusive band: probabilities inside [lower, upper] map to verdict =
+  # "INCONCLUSIVE" instead of forced REAL/FAKE. Set lower == upper to disable
+  # the band and recover a strict binary decision at default_threshold.
+  inconclusive_lower: 0.4
+  inconclusive_upper: 0.6
+
+
+# FastAPI Web Deployment
+# Settings for scripts/run_api.py (src.api.main:app)
+api:
+  host: "127.0.0.1"      # 0.0.0.0 to expose on LAN; 127.0.0.1 keeps it local
+  port: 8000
+  default_model: "temporal"  # Model used when request does not specify one — options: mixed, ensemble, temporal
+  upload_dir: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/uploads"  # Where uploaded videos are temporarily saved before preprocessing
+  max_file_size_mb: 200  # Reject uploads larger than this (prevents memory/disk exhaustion)
+  allowed_extensions: [".mp4", ".avi", ".mov", ".mkv", ".webm"]  # File types the upload endpoint accepts
+  checkpoints:
+    mixed: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/models/mixed/best_model_mixed.pth"
+    # v3 line — all three architectures trained under the shortcut-filtered pipeline
+    # (real_youtube excluded, DFD-duplicate prefix excluded, WeightedRandomSampler,
+    # ImageNet init). Keep the v3 slots paired so the UI never mixes v2/v3 verdicts.
+    ensemble: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/models/ensemble_v3/best_model_ensemble.pth"
+    temporal: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/models/temporal_v3/best_model_temporal.pth"
+    robust: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/models/robust_v3/best_model_robust.pth"
+
+
+# Output Settings
+output:
+  models_dir: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/models"
+  results_dir: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/outputs/results"
+  logs_dir: "C:/Users/Lucas/Desktop/Raul/FINAL YEAR PROJECT/logs"
+
+
+# Hardware Settings
+hardware:
+  device: "cuda"  # Options: cuda, cpu. Training scripts fall back to CPU if CUDA unavailable
+  mixed_precision: true # A way of storing a decimal number using only 16 bits of memory instead of the standard 32 bits (float32).
+

@@ -1,0 +1,131 @@
+# Container override of config.yaml. docker-compose mounts this file over
+# /app/config/config.yaml so src/api/main.py and scripts/run_api.py pick it
+# up without any code changes. The only differences from config.yaml are:
+#   - Windows host paths rewritten to /app/... container paths
+#   - api.host bound to 0.0.0.0 so the published port is reachable
+#   - data/ is not mounted in the API image (training-only), so the dataset
+#     paths below are placeholders that the API never reads at runtime
+
+# Dataset Paths (unused by the API container — kept for schema parity)
+data:
+  root: "/app/data"
+  faceforensics:
+    root: "/app/data/FaceForensics++"
+    original: "/app/data/FaceForensics++/original"
+    deepfakes: "/app/data/FaceForensics++/Deepfakes"
+    face2face: "/app/data/FaceForensics++/Face2Face"
+    faceswap: "/app/data/FaceForensics++/FaceSwap"
+    faceshifter: "/app/data/FaceForensics++/FaceShifter"
+    neural_textures: "/app/data/FaceForensics++/NeuralTextures"
+    deepfake_detection: "/app/data/FaceForensics++/DeepFakeDetection"
+  celebdf:
+    root: "/app/data/Celeb-DF-v2"
+    celeb_real: "/app/data/Celeb-DF-v2/Celeb-real"
+    celeb_synthesis: "/app/data/Celeb-DF-v2/Celeb-synthesis"
+    youtube_real: "/app/data/Celeb-DF-v2/YouTube-real"
+    test_list: "/app/data/Celeb-DF-v2/List_of_testing_videos.txt"
+  processed:
+    root: "/app/data/processed"
+    faceforensics: "/app/data/processed/FaceForensics++_AllTypes"
+    celebdf: "/app/data/processed/Celeb-DF-v2"
+
+# Preprocessing Settings (identical to host config)
+preprocessing:
+  face_detector: "mtcnn"
+  min_face_size: 60
+  frames_per_video: 32
+  training_frames_per_video: 5
+  frame_sampling: "uniform"
+  alignment:
+    enabled: true
+    output_size: 299
+    margin: 0.3
+  image:
+    size: 299
+    normalize_mean: [0.5, 0.5, 0.5]
+    normalize_std: [0.5, 0.5, 0.5]
+
+model:
+  xception:
+    pretrained: true
+    num_classes: 2
+    dropout: 0.5
+  efficientnet:
+    pretrained: true
+    num_classes: 2
+    dropout: 0.5
+  ensemble:
+    fusion: "mean"
+    xception_weight: 0.5
+  temporal:
+    lstm_hidden: 512
+    lstm_layers: 2
+    lstm_dropout: 0.3
+    classifier_dropout: 0.5
+    bidirectional: false
+    sequence_length: 32
+
+training:
+  batch_size: 32
+  num_workers: 4
+  epochs: 30
+  optimizer:
+    name: "adam"
+    learning_rate: 0.0001
+    weight_decay: 0.00001
+  scheduler:
+    name: "cosine"
+    min_lr: 0.000001
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  early_stopping:
+    patience: 7
+    min_delta: 0.001
+  checkpoint_dir: "/app/outputs/models"
+  save_best_only: true
+
+training_robust:
+  epochs: 10
+  learning_rate: 1.0e-5
+  resume_from: "/app/outputs/models/mixed/best_model_mixed.pth"
+  output_dir: "/app/outputs/models/robust"
+
+evaluation:
+  targets:
+    faceforensics_auc: 0.92
+    celebdf_auc: 0.70
+    eer_ff: 0.08
+    eer_celebdf: 0.18
+  batch_size: 64
+  aggregation: "mean"
+
+inference:
+  target_fps: 10
+  batch_size: 8
+  default_threshold: 0.5
+  inconclusive_lower: 0.4
+  inconclusive_upper: 0.6
+
+# FastAPI Web Deployment — container variant
+api:
+  host: "0.0.0.0"            # Bind to all interfaces so the published port is reachable
+  port: 8000
+  default_model: "temporal"
+  upload_dir: "/app/outputs/uploads"
+  max_file_size_mb: 200
+  allowed_extensions: [".mp4", ".avi", ".mov", ".mkv", ".webm"]
+  checkpoints:
+    mixed: "/app/outputs/models/mixed/best_model_mixed.pth"
+    ensemble: "/app/outputs/models/ensemble_v3/best_model_ensemble.pth"
+    temporal: "/app/outputs/models/temporal_v3/best_model_temporal.pth"
+    robust: "/app/outputs/models/robust_v3/best_model_robust.pth"
+
+output:
+  models_dir: "/app/outputs/models"
+  results_dir: "/app/outputs/results"
+  logs_dir: "/app/logs"
+
+hardware:
+  device: "cuda"
+  mixed_precision: true
