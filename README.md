@@ -47,7 +47,7 @@ FINAL YEAR PROJECT/
     figures/          rendered dissertation figures
     gradcam/          source PNGs for figures 6.8 to 6.12 
     profiling/        figure 5.5 raw timings
-    models/           trained checkpoints
+    models/           trained checkpoints downloaded from Kaggle
   Dockerfile          API image build recipe
   docker-compose.yml  GPU-enabled service definition
   requirements.txt    pinned Python dependencies
@@ -65,11 +65,12 @@ Two independent paths. **Path A** runs the live FastAPI demo via Docker. **Path 
 3. **Verify GPU passthrough**: `docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi` should print the GPU table. Fix this before continuing if it fails.
 4. **Unzip the project** (avoid spaces in the path on Windows where possible).
 5. **Open a terminal in the project root** (where `docker-compose.yml` sits).
-6. **Build the image**: `docker compose build` (first run downloads the ~5 GB PyTorch CUDA base image, ~6 to 10 minutes).
-7. **Start the container**: `docker compose up -d`.
-8. **Open `http://localhost:8000/`** in any browser. Upload any clip from `demo_samples/` to verify.
+6. **Download the four production checkpoints from Kaggle** and place them under `outputs/models/` as described in [Model checkpoints](#model-checkpoints).
+7. **Build the image**: `docker compose build` (first run downloads the ~5 GB PyTorch CUDA base image, ~6 to 10 minutes).
+8. **Start the container**: `docker compose up -d`.
+9. **Open `http://localhost:8000/`** in any browser. Upload any clip from `demo_samples/` to verify.
 
-To stop: `docker compose down`. To see live logs: `docker compose logs -f api`. The four trained checkpoints ship in `outputs/models/`; no separate download is required.
+To stop: `docker compose down`. To see live logs: `docker compose logs -f api`. The four trained checkpoints are hosted separately on Kaggle because the `.pth` files are large; download them before starting the API, as described in [Model checkpoints](#model-checkpoints).
 
 ### Path B - Training, evaluation, figure regeneration (venv only)
 
@@ -111,10 +112,16 @@ Every subsequent terminal session must **re-activate the venv** (step 6 only) be
 
 ## Model checkpoints
 
-All trained checkpoints are committed to this repository under
-`outputs/models/`. After cloning, the FastAPI container picks them up
-automatically through the bind mount declared in `docker-compose.yml`; no
-separate download step is required.
+The trained PyTorch checkpoints are large, so they are hosted on Kaggle
+instead of being committed directly to the GitHub repository. Download the
+model archive from:
+
+https://www.kaggle.com/models/raulblancovazquez/deepfake-detection-system-models/
+
+You may need to sign in to Kaggle before downloading. After downloading,
+create `outputs/models/` if it does not already exist, then extract or move
+the checkpoint folders into that directory. The FastAPI container reads
+those local files through the bind mount declared in `docker-compose.yml`.
 
 The four FastAPI-served checkpoints (the production line):
 
@@ -141,6 +148,21 @@ outputs/models/
 The container will refuse to start if any of the four production
 checkpoints is missing; the additional checkpoints are only consulted when
 re-running the visualisation scripts under `scripts/`.
+
+To verify the download from the project root:
+
+```powershell
+Get-ChildItem outputs\models -Recurse -Filter *.pth
+```
+
+On Linux/macOS:
+
+```bash
+find outputs/models -name "*.pth"
+```
+
+See [outputs/README.md](outputs/README.md) for the full artifact layout,
+download notes, and Kaggle citation.
 
 ## Demo samples
 
@@ -220,8 +242,9 @@ If you reference this project, please cite the dissertation:
 ## Licence and academic-evaluation notice
 
 Source code in this repository is provided under the MIT licence for
-academic use. The trained checkpoints, demo samples, and processed face
-crops are derivative works of academic deepfake-detection datasets each
-released under terms that prohibit further redistribution; they are
-provided to the dissertation marker exclusively for evaluation of this
-submission and must not be redistributed or reposted in any form.
+academic use. The trained checkpoints are distributed separately through
+the Kaggle model release cited above. Demo samples and processed face crops
+are derivative works of academic deepfake-detection datasets each released
+under terms that prohibit further redistribution; they are provided to the
+dissertation marker exclusively for evaluation of this submission and must
+not be redistributed or reposted in any form.
